@@ -37,9 +37,15 @@ public class NativeHttpRequest implements HttpResponder {
     // answered on the OkHTTP thread. We could get rid of
     // this lock by using Runnable when we move Android
     // implementation of mbgl::RunLoop to Looper.
-    lock.lock();
+    // Only lock when not already locked though as a response
+    // or failure callback may already be in progress which
+    // might be the trigger for this cancel and should not
+    // create a dead-lock
+    boolean locked = lock.tryLock();
     nativePtr = 0;
-    lock.unlock();
+    if (locked) {
+      lock.unlock();
+    }
   }
 
   public void onResponse(int responseCode, String etag, String lastModified, String cacheControl, String expires,
